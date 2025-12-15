@@ -53,7 +53,12 @@
 <div style="padding-left:300px;" class="container">
 
         <div class="col-sm-2 col-md-2">
-            <img src="{% static customer.profile_pic.url %}"   alt="profile pic" class="img-rounded img-responsive" />
+            {% if customer.profile_pic %}
+    <img src="{{ customer.profile_pic.url }}" alt="profile pic" class="img-rounded img-responsive" />
+{% else %}
+    <img src="{% static 'images/default_profile.png' %}" alt="default pic" class="img-rounded img-responsive" />
+{% endif %}
+
         </div>
         <div class="col-sm-4 col-md-4">
             <blockquote>

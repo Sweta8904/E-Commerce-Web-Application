@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'ecom',
     'widget_tweaks',
+    'rest_framework',
 
 ]
 

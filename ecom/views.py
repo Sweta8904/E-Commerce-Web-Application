@@ -6,7 +6,13 @@ from django.contrib.auth.models import Group
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib import messages
 from django.conf import settings
-
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.contrib.auth import authenticate
+from .models import Orders, Product
+from django.shortcuts import redirect
+from django.contrib.auth import logout
+from .forms import AddressForm 
 def home_view(request):
     products=models.Product.objects.all()
     if 'product_ids' in request.COOKIES:
@@ -345,49 +351,67 @@ def customer_home_view(request):
 # shipment address before placing order
 @login_required(login_url='customerlogin')
 def customer_address_view(request):
-    # this is for checking whether product is present in cart or not
-    # if there is no product in cart we will not show address form
-    product_in_cart=False
+
+    # check if product is in cart
+    product_in_cart = False
+    if 'product_ids' in request.COOKIES:
+        if request.COOKIES.get('product_ids') != "":
+            product_in_cart = True
+
+    # cart counter
     if 'product_ids' in request.COOKIES:
         product_ids = request.COOKIES['product_ids']
-        if product_ids != "":
-            product_in_cart=True
-    #for counter in cart
-    if 'product_ids' in request.COOKIES:
-        product_ids = request.COOKIES['product_ids']
-        counter=product_ids.split('|')
-        product_count_in_cart=len(set(counter))
+        product_count_in_cart = len(set(product_ids.split('|')))
     else:
-        product_count_in_cart=0
+        product_count_in_cart = 0
 
     addressForm = forms.AddressForm()
+
     if request.method == 'POST':
         addressForm = forms.AddressForm(request.POST)
+
         if addressForm.is_valid():
-            # here we are taking address, email, mobile at time of order placement
-            # we are not taking it from customer account table because
-            # these thing can be changes
             email = addressForm.cleaned_data['Email']
-            mobile=addressForm.cleaned_data['Mobile']
+            mobile = addressForm.cleaned_data['Mobile']
             address = addressForm.cleaned_data['Address']
-            #for showing total price on payment page.....accessing id from cookies then fetching  price of product from db
-            total=0
+
+            total = 0
             if 'product_ids' in request.COOKIES:
                 product_ids = request.COOKIES['product_ids']
                 if product_ids != "":
-                    product_id_in_cart=product_ids.split('|')
-                    products=models.Product.objects.all().filter(id__in = product_id_in_cart)
+                    products = models.Product.objects.filter(
+                        id__in=product_ids.split('|')
+                    )
                     for p in products:
-                        total=total+p.price
+                        total += p.price
 
-            response = render(request, 'ecom/payment.html',{'total':total})
-            response.set_cookie('email',email)
-            response.set_cookie('mobile',mobile)
-            response.set_cookie('address',address)
-            return response
-    return render(request,'ecom/customer_address.html',{'addressForm':addressForm,'product_in_cart':product_in_cart,'product_count_in_cart':product_count_in_cart})
+            response = render(request, 'ecom/payment.html', {'total': total})
+            response.set_cookie('email', email)
+            response.set_cookie('mobile', mobile)
+            response.set_cookie('address', address)
+            return response   # ✅ RETURN HERE
 
+        # 🔹 FORM INVALID → RETURN PAGE AGAIN
+        return render(
+            request,
+            'ecom/customer_address.html',
+            {
+                'addressForm': addressForm,
+                'product_in_cart': product_in_cart,
+                'product_count_in_cart': product_count_in_cart
+            }
+        )
 
+    # 🔹 GET REQUEST → RETURN PAGE
+    return render(
+        request,
+        'ecom/customer_address.html',
+        {
+            'addressForm': addressForm,
+            'product_in_cart': product_in_cart,
+            'product_count_in_cart': product_count_in_cart
+        }
+    )
 
 
 # here we are just directing to this view...actually we have to check whther payment is successful or not
@@ -556,3 +580,58 @@ def contactus_view(request):
             send_mail(str(name)+' || '+str(email),message, settings.EMAIL_HOST_USER, settings.EMAIL_RECEIVING_USER, fail_silently = False)
             return render(request, 'ecom/contactussuccess.html')
     return render(request, 'ecom/contactus.html', {'form':sub})
+
+@api_view(['POST'])
+def login_api(request):
+    # Read data from JSON request
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    # Authenticate user
+    user = authenticate(username=username, password=password)
+
+    if user is not None:
+        return Response({
+            "message": "Login successful",
+            "user_id": user.id,
+            "username": user.username
+        })
+    else:
+        return Response(
+            {"error": "Invalid username or password"},
+            status=401
+        )
+def logout_view(request):
+    logout(request)
+    return redirect('customerlogin') 
+
+@api_view(['POST'])
+def place_order_api(request):
+    if not request.user.is_authenticated:
+        return Response({"error": "Login required"}, status=401)
+
+    product_ids = request.COOKIES.get('product_ids')
+
+    if not product_ids:
+        return Response({"error": "Cart is empty"}, status=400)
+
+    product_ids = product_ids.split('|')
+    customer = models.Customer.objects.get(user_id=request.user.id)
+
+    for pid in product_ids:
+        product = Product.objects.get(id=pid)
+        Orders.objects.create(
+            customer=customer,
+            product=product,
+            status="Placed"
+        )
+
+    response = Response({
+        "status": "success",
+        "message": "Payment initiated, order placed"
+    }, status=201)
+
+    # clear cart after order
+    response.delete_cookie('product_ids')
+
+    return response
