@@ -1,0 +1,16 @@
+**Developed By Sweta **
+
+**Instructions**
+- Install the Requirements: pip install -r requirements.txt
+- Then, make database migrations: python manage.py makemigrations
+- python manage.py migrate
+- And finally, run the application: python manage.py runserver
+
+For Admin Account
+name : admin 
+password : admin123
+
+
+for users Account
+name : user
+password : 123
