@@ -25,10 +25,17 @@ STATIC_DIR=os.path.join(BASE_DIR,'static')
 SECRET_KEY = '#vw(03o=(9kbvg!&2d5i!2$_58x@_-3l4wujpow6(ym37jxnza'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+ALLOWED_HOSTS = [
+    "ecommerce-web-application-hs8b.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
-ALLOWED_HOSTS = []
+CSRF_TRUSTED_ORIGINS = [
+    "https://ecommerce-web-application-hs8b.onrender.com",
+]
 
+DEBUG = False
 
 # Application definition
 
@@ -124,11 +131,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
-STATIC_URL = '/static/'
 
-STATICFILES_DIRS=[STATIC_DIR,]
 
-MEDIA_ROOT=os.path.join(BASE_DIR,'static')
 
 
 
@@ -147,3 +151,14 @@ EMAIL_HOST_PASSWORD = 'xyz' # host email password required
 # otherwise you will get SMTPAuthenticationError at /contactus
 # this process is required because google blocks apps authentication by default
 EMAIL_RECEIVING_USER = ['to@gmail.com'] # email on which you will receive messages sent from website
+STATIC_URL = '/static/'
+
+# Where Django looks for static files during development
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Where Django will collect all static files for deployment
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
